@@ -1,0 +1,42 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # для соединения с AMQP
+      - "15672:15672" # панель управления RabbitMQ
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.3
+    container_name: clickhouse
+    ports:
+      - "9000:9000"   # nативный протокол ClickHouse
+      - "8123:8123"   # HTTP-интерфейс ClickHouse
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DB: default
+
+  app:
+    build: .
+    container_name: fastapi-app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - rabbitmq
+      - clickhouse
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      CLICKHOUSE_HOST: clickhouse
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - .:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
